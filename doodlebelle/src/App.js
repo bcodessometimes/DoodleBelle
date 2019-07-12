@@ -1,74 +1,95 @@
 import React, { Component } from 'react';
-import { Navbar, Button } from 'react-bootstrap';
-import './App.css';
+import { StripeProvider } from 'react-stripe-elements';
+import {
+  BrowserRouter as Router,
+  Route
+} from 'react-router-dom';
+import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';
+
+import config from './assets/store_config';
+import Landing from './components/Landing';
+
+import ScrollToTop from './components/ui/ScrollToTop';
+import Banner from './components/ui/Banner';
+import Products from './components/product/Products';
+import Product from './components/product/Product';
+import Cart from './components/cart/Cart';
+import Checkout from './components/checkout/Checkout';
+import Confirm from './components/checkout/Confirm';
+import Admin from './components/admin/Admin';
+import Login from './components/admin/Login';
+
+const theme = createMuiTheme({
+  palette: {
+    primary: {
+      main: config.colors.primary.main,
+      dark: config.colors.primary.dark,
+      contrastText: config.colors.primary.contrastText
+    },
+    secondary: { main: config.colors.secondary.main },
+  },
+  typography: {
+    fontFamily: [
+      'Raleway',
+      'Roboto',
+      'Helvetica',
+      'sans-serif'
+    ]
+  },
+});
 
 class App extends Component {
-  goTo(route) {
-    this.props.history.replace(`/${route}`)
-  }
-
-  login() {
-    this.props.auth.login();
-  }
-
-  logout() {
-    this.props.auth.logout();
-  }
+  state = {};
 
   componentDidMount() {
-    const { renewSession } = this.props.auth;
-
-    if (localStorage.getItem('isLoggedIn') === 'true') {
-      renewSession();
-    }
+    const slug = `${config.store_slug}_products`;
+    const items = JSON.parse(localStorage.getItem(slug));
+    this.setState({ quantity : items ? items.length : 0 })
   }
-
+  updateNumber = (quantity) => {
+    this.setState({ quantity });
+  }
   render() {
-    const { isAuthenticated } = this.props.auth;
-
     return (
-      <div>
-        <Navbar fluid>
-          <Navbar.Header>
-            <Navbar.Brand>
-              <a href="#">Auth0 - React</a>
-            </Navbar.Brand>
-            <Button
-              bsStyle="primary"
-              className="btn-margin"
-              onClick={this.goTo.bind(this, 'home')}
-            >
-              Home
-            </Button>
-            {
-              !isAuthenticated() && (
-                  <Button
-                    id="qsLoginBtn"
-                    bsStyle="primary"
-                    className="btn-margin"
-                    onClick={this.login.bind(this)}
-                  >
-                    Log In
-                  </Button>
-                )
-            }
-            {
-              isAuthenticated() && (
-                  <Button
-                    id="qsLogoutBtn"
-                    bsStyle="primary"
-                    className="btn-margin"
-                    onClick={this.logout.bind(this)}
-                  >
-                    Log Out
-                  </Button>
-                )
-            }
-          </Navbar.Header>
-        </Navbar>
-      </div>
+      <StripeProvider apiKey={config.api_key}>
+        <Router>
+          <ScrollToTop>
+            <MuiThemeProvider theme={theme}>
+              <div className={config.store_slug}>
+                <div className="bg" />
+                <Banner quantity={this.state.quantity} config={config} />
+                <Route exact path="/"
+                  render={(props) => <Landing config={config} />}
+                />
+                <Route exact path="/product"
+                  render={(props) => <Products config={config} />}
+                />
+                { config.products.map((product,i) =>
+                    <Route exact key={`route${i}`}
+                      path={`/product/${product.url}`} 
+                      render={(props) => 
+                        <Product product={product} config={config} 
+                          updateNumber={this.updateNumber}
+                        />
+                      }
+                    />
+                  )
+                }
+                <Route exact path="/cart"
+                  render={(props) => <Cart config={config} updateNumber={this.updateNumber} />}
+                />
+                <Route exact path="/checkout"
+                  render={(props) => <Checkout config={config} />}
+                />
+                <Route exact path="/confirm" component={Confirm} />
+                <Route exact path="/admin" component={Admin} />
+                <Route exact path="/login" component={Login} />
+              </div>
+            </MuiThemeProvider>
+          </ScrollToTop>
+        </Router>
+      </StripeProvider>
     );
   }
-}
-
+};
 export default App;
